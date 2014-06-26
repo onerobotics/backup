@@ -160,6 +160,8 @@ func (c *Connection) Download(filename string, dest string) {
 	_, err = io.Copy(w, dconn)
 	check(err)
 
+	dconn.Close()
+
 	code, msg, err = c.conn.ReadResponse(2)
 	check(err)
 	c.debugResponse(code, msg)
