@@ -1,26 +1,26 @@
 package main
 
 import (
-	"log"
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/codegangsta/cli"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/codegangsta/cli"
 	"github.com/unreal/backup/ftp"
 )
-
 
 const VERSION = "0.1.0"
 
 type Project struct {
 	Destination string
-	Version string
-	Robots []Robot
+	Version     string
+	Robots      []Robot
 }
 
 type Robot struct {
@@ -34,11 +34,11 @@ func check(e error) {
 	}
 }
 
-func (r *Robot) Backup(destination string, wg *sync.WaitGroup) {
+func (r Robot) Backup(destination string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	t := time.Now()
 
-	fmt.Println("Backing up", r.Name)
+	fmt.Println("Backing up", r.Name, "at", r.Host)
 	dirname := destination + "/" + r.Name
 	err := os.MkdirAll(dirname, os.ModePerm)
 	check(err)
@@ -48,7 +48,7 @@ func (r *Robot) Backup(destination string, wg *sync.WaitGroup) {
 	defer c.Quit()
 
 	files := c.NameList()
-	
+
 	c.Type("I")
 
 	for _, file := range files {
@@ -69,25 +69,25 @@ func InitProject() *Project {
 		f.Close()
 
 		reader := bufio.NewReader(os.Stdin)
-		Questions:
-			fmt.Println("Where should backups be stored?")
-			dest, err := reader.ReadString('\n')
-			check(err)
-			dest = strings.TrimSpace(dest)
+	Questions:
+		fmt.Println("Where should backups be stored?")
+		dest, err := reader.ReadString('\n')
+		check(err)
+		dest = strings.TrimSpace(dest)
 
-			confirm:
-				fmt.Printf("Destination: %s\n", dest)
-				fmt.Println("Is this correct? (Y/N)")
-				answer, err := reader.ReadString('\n')
-				check(err)
-				answer = strings.TrimSpace(answer)
-				if answer != "Y" && answer != "y" && answer != "N" && answer != "n" {
-					goto confirm
-				}
+	confirm:
+		fmt.Printf("Destination: %s\n", dest)
+		fmt.Println("Is this correct? (Y/N)")
+		answer, err := reader.ReadString('\n')
+		check(err)
+		answer = strings.TrimSpace(answer)
+		if answer != "Y" && answer != "y" && answer != "N" && answer != "n" {
+			goto confirm
+		}
 
-				if answer == "N" || answer == "n" {
-					goto Questions
-				}
+		if answer == "N" || answer == "n" {
+			goto Questions
+		}
 
 		p.Destination = dest
 		p.Version = VERSION
@@ -101,34 +101,34 @@ func InitProject() *Project {
 
 func (p *Project) AddRobot() {
 	reader := bufio.NewReader(os.Stdin)
-	begin:
-		fmt.Println("Please provide a name for the robot (e.g. R1):")
-		name, err := reader.ReadString('\n')
-		check(err)
-		name = strings.TrimSpace(name)
+begin:
+	fmt.Println("Please provide a name for the robot (e.g. R1):")
+	name, err := reader.ReadString('\n')
+	check(err)
+	name = strings.TrimSpace(name)
 
-		fmt.Printf("What is %s's IP address?\n", name)
-		ip, err := reader.ReadString('\n')
-		check(err)
-		ip = strings.TrimSpace(ip)
+	fmt.Printf("What is %s's IP address?\n", name)
+	ip, err := reader.ReadString('\n')
+	check(err)
+	ip = strings.TrimSpace(ip)
 
-		confirm:
-			fmt.Printf("Name: %s\nIP:   %s\n", name, ip)
-			fmt.Println("Is this correct? (Y/N)")
-			answer, err := reader.ReadString('\n')
-			check(err)
-			answer = strings.TrimSpace(answer)
-			switch answer {
-				case "Y", "y":
-					r := Robot{Name: name, Host: ip}
-					p.Robots = append(p.Robots, r)
-					p.Save()
-				case "N", "n":
-					goto begin
-				default:
-					goto confirm
-			}
-		
+confirm:
+	fmt.Printf("Name: %s\nIP:   %s\n", name, ip)
+	fmt.Println("Is this correct? (Y/N)")
+	answer, err := reader.ReadString('\n')
+	check(err)
+	answer = strings.TrimSpace(answer)
+	switch answer {
+	case "Y", "y":
+		r := Robot{Name: name, Host: ip}
+		p.Robots = append(p.Robots, r)
+		p.Save()
+	case "N", "n":
+		goto begin
+	default:
+		goto confirm
+	}
+
 }
 
 func (p *Project) Backup() {
@@ -165,18 +165,18 @@ func (p *Project) RemoveRobot() {
 		return
 	}
 
-	list:
-		for id, robot := range p.Robots {
-			fmt.Printf("%d. %s %s\n", id+1, robot.Name, robot.Host)
-		}
-		fmt.Println("\nWhich robot do you want to remove?")
-		var id int
-		_, err := fmt.Scanf("%d", &id)
-		check(err)
-		id = id - 1
-		if id < 0 || id > len(p.Robots)-1 {
-			goto list
-		}
+list:
+	for id, robot := range p.Robots {
+		fmt.Printf("%d. %s %s\n", id+1, robot.Name, robot.Host)
+	}
+	fmt.Println("\nWhich robot do you want to remove?")
+	var id int
+	_, err := fmt.Scanf("%d", &id)
+	check(err)
+	id = id - 1
+	if id < 0 || id > len(p.Robots)-1 {
+		goto list
+	}
 
 	fmt.Printf("Removing robot #%d\n", id+1)
 	p.Robots = append(p.Robots[:id], p.Robots[id+1:]...)
