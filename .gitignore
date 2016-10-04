@@ -2,3 +2,5 @@
 *.json
 dist/
 test/
+*.exe
+backups/
