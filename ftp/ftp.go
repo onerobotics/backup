@@ -1,16 +1,17 @@
 package ftp
 
 import (
+	"bufio"
+	"errors"
+	"io"
 	"log"
- 	"net"
+	"net"
 	"net/textproto"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"os"
-	"io"
-	"bufio"
 )
 
 func check(e error) {
@@ -20,10 +21,10 @@ func check(e error) {
 }
 
 type Connection struct {
-	c net.Conn
-	conn *textproto.Conn
-	addr string
-	port string
+	c     net.Conn
+	conn  *textproto.Conn
+	addr  string
+	port  string
 	Debug bool
 }
 
@@ -48,13 +49,13 @@ func (c *Connection) debugf(format string, v ...interface{}) {
 
 func (c *Connection) debugResponse(code int, msg string) {
 	if c.Debug {
-	  log.Printf("code: %d, msg: %v\n", code, msg)
+		log.Printf("code: %d, msg: %v\n", code, msg)
 	}
 }
 
 func (c *Connection) Connect() {
-	c.debugf("Connecting to", c.addr + ":" + c.port)
-	conn, err := net.Dial("tcp", c.addr + ":" + c.port)
+	c.debugf("Connecting to", c.addr+":"+c.port)
+	conn, err := net.Dial("tcp", c.addr+":"+c.port)
 	check(err)
 	c.c = conn
 
@@ -87,37 +88,50 @@ func (c *Connection) Type(t string) {
 
 var passiveRegexp = regexp.MustCompile(`([\d]+),([\d]+),([\d]+),([\d]+),([\d]+),([\d]+)`)
 
-func (c *Connection) Passive() net.Conn {
-	code, msg, err := c.Cmd(227,"PASV")
-	check(err)
+func (c *Connection) Passive() (net.Conn, error) {
+	code, msg, err := c.Cmd(227, "PASV")
+	if err != nil {
+		return nil, err
+	}
 	c.debugResponse(code, msg)
 
 	matches := passiveRegexp.FindStringSubmatch(msg)
 	if matches == nil {
-		log.Fatal("Cannot parse PASV response", msg)
+		return nil, errors.New("Cannot parse PASV response: " + msg)
 	}
 
 	ph, err := strconv.Atoi(matches[5])
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 	pl, err := strconv.Atoi(matches[6])
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 	port := strconv.Itoa((ph << 8) | pl)
 	addr := strings.Join(matches[1:5], ".") + ":" + port
 
 	timeout := 10 * time.Second
 	dconn, err := net.DialTimeout("tcp", addr, timeout)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
-	return dconn
+	return dconn, nil
 }
 
 // todo: support argument to namelist e.g. *.ls
-func (c *Connection) NameList() []string {
-	dconn := c.Passive()
+func (c *Connection) NameList() ([]string, error) {
+	dconn, err := c.Passive()
+	if err != nil {
+		return nil, err
+	}
 	defer dconn.Close()
 
-	code, msg, err := c.Cmd(1,"NLST")
-	check(err)
+	code, msg, err := c.Cmd(1, "NLST")
+	if err != nil {
+		return nil, err
+	}
 	c.debugResponse(code, msg)
 
 	var files []string
@@ -127,42 +141,60 @@ func (c *Connection) NameList() []string {
 		files = append(files, scanner.Text())
 	}
 	err = scanner.Err()
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 	dconn.Close()
 
 	c.debugf("Received list of %d files\n", len(files))
 
 	c.debug("Waiting for response from main connection...")
 	code, msg, err = c.conn.ReadResponse(226)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 	c.debugResponse(code, msg)
 
-	return files
+	return files, nil
 }
 
-func (c *Connection) Download(filename string, dest string) {
+func (c *Connection) Download(filename string, dest string) error {
 	if filename[0] == '-' {
-		return
+		return nil
 	}
 
 	fo, err := os.Create(dest + "/" + filename)
-	check(err)
+	if err != nil {
+		return err
+	}
 	defer fo.Close()
 
 	w := bufio.NewWriter(fo)
 	defer w.Flush()
 
-	dconn := c.Passive()
+	dconn, err := c.Passive()
+	if err != nil {
+		return err
+	}
 	defer dconn.Close()
 
 	code, msg, err := c.Cmd(1, "RETR %s", filename)
+	if err != nil {
+		return err
+	}
 
 	_, err = io.Copy(w, dconn)
-	check(err)
+	if err != nil {
+		return err
+	}
 
 	dconn.Close()
 
 	code, msg, err = c.conn.ReadResponse(2)
-	check(err)
+	if err != nil {
+		return err
+	}
 	c.debugResponse(code, msg)
+
+	return nil
 }

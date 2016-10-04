@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +16,7 @@ import (
 	"github.com/unreal/backup/ftp"
 )
 
-const VERSION = "0.1.0"
+const VERSION = "1.0.0"
 
 type Project struct {
 	Destination string
@@ -34,7 +35,7 @@ func check(e error) {
 	}
 }
 
-func (r Robot) Backup(destination string, wg *sync.WaitGroup) {
+func (r Robot) Backup(filter func(filename string) bool, destination string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	t := time.Now()
 
@@ -47,16 +48,35 @@ func (r Robot) Backup(destination string, wg *sync.WaitGroup) {
 	c.Connect()
 	defer c.Quit()
 
-	files := c.NameList()
+	files, err := c.NameList()
+	if err != nil {
+		log.Println("error getting list of files")
+		return
+	}
 
 	c.Type("I")
 
+	var errorList []error
 	for _, file := range files {
-		log.Printf("%s: Downloading %s", r.Name, file)
-		c.Download(file, dirname)
+		if filter(file) {
+			log.Printf("%s: Downloading %s", r.Name, file)
+			err := c.Download(file, dirname)
+			if err != nil {
+				errorList = append(errorList, err)
+			}
+		} else {
+			//log.Printf("%s: Skipping %s", r.Name, file)
+		}
 	}
 
-	fmt.Printf("Finished backing up %s in %v\n", r.Name, time.Since(t))
+	if len(errorList) > 0 {
+		log.Printf("There were %d errors.\n", len(errorList))
+		for _, err := range errorList {
+			log.Println(err)
+		}
+	}
+
+	log.Printf("Finished backing up %s in %v\n", r.Name, time.Since(t))
 }
 
 func InitProject() *Project {
@@ -131,7 +151,7 @@ confirm:
 
 }
 
-func (p *Project) Backup() {
+func (p *Project) Backup(filter func(string) bool, name string) {
 	if len(p.Robots) <= 0 {
 		fmt.Println("Your project does not have any robots. Please run `BackupTool add` to add one.")
 		return
@@ -140,12 +160,12 @@ func (p *Project) Backup() {
 	t := time.Now()
 
 	fmt.Println("Backing up project...")
-	dest := p.Destination + "/" + fmt.Sprintf("%d-%02d-%02dT%02d-%02d-%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	dest := p.Destination + "/" + fmt.Sprintf("%d-%02d-%02dT%02d-%02d-%02d_%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), name)
 
 	var wg sync.WaitGroup
 	for _, r := range p.Robots {
 		wg.Add(1)
-		go r.Backup(dest, &wg)
+		go r.Backup(filter, dest, &wg)
 	}
 	wg.Wait()
 	fmt.Printf("Backed up all robots in %v", time.Since(t))
@@ -191,7 +211,7 @@ func main() {
 	app.Usage = "Robot backups made easy by ONE Robotics Company."
 	app.Version = VERSION
 	app.Author = "Jay Strybis"
-	app.Email = "jay.strybis@gmail.com"
+	app.Email = "jstrybis@onerobotics.com"
 	app.Commands = []cli.Command{
 		{
 			Name:      "add",
@@ -210,7 +230,128 @@ func main() {
 					Name:  "all",
 					Usage: "*.*",
 					Action: func(c *cli.Context) {
-						p.Backup()
+						p.Backup(func(filename string) bool { return true }, "all")
+					},
+				},
+				{
+					Name:  "tp",
+					Usage: "*.tp",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							if filepath.Ext(filename) == ".tp" {
+								return true
+							} else {
+								return false
+							}
+						}, "tp")
+					},
+				},
+				{
+					Name:  "ls",
+					Usage: "*.ls",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							if filepath.Ext(filename) == ".ls" {
+								return true
+							} else {
+								return false
+							}
+						}, "ls")
+					},
+				},
+				{
+					Name:  "vr",
+					Usage: "*.vr",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							if filepath.Ext(filename) == ".vr" {
+								return true
+							} else {
+								return false
+							}
+						}, "vr")
+					},
+				},
+				{
+					Name:  "va",
+					Usage: "*.va",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							if filepath.Ext(filename) == ".va" {
+								return true
+							} else {
+								return false
+							}
+						}, "va")
+					},
+				},
+				{
+					Name:  "sv",
+					Usage: "*.sv",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							if filepath.Ext(filename) == ".sv" {
+								return true
+							} else {
+								return false
+							}
+						}, "sv")
+					},
+				},
+				{
+					Name:  "vision",
+					Usage: "*.vd, *.vda, *.zip",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							switch filepath.Ext(filename) {
+							case ".vd", ".vda", ".zip":
+								return true
+							}
+							return false
+						}, "vision")
+					},
+				},
+				{
+					Name:  "app",
+					Usage: "*.tp, numreg.vr, posreg.vr",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							switch filepath.Ext(filename) {
+							case ".tp":
+								return true
+							}
+							switch filename {
+							case "numreg.vr", "posreg.vr":
+								return true
+							}
+							return false
+						}, "app")
+					},
+				},
+				{
+					Name:  "ascii",
+					Usage: "*.ls, *.va, *.dat, *.dg, *.xml",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							switch filepath.Ext(filename) {
+							case ".ls", ".va", ".dat", ".dg", ".xml":
+								return true
+							}
+							return false
+						}, "ascii")
+					},
+				},
+				{
+					Name:  "bin",
+					Usage: "*.zip, *.sv, *.tp, *.vr",
+					Action: func(c *cli.Context) {
+						p.Backup(func(filename string) bool {
+							switch filepath.Ext(filename) {
+							case ".zip", ".sv", ".tp", ".vr":
+								return true
+							}
+							return false
+						}, "bin")
 					},
 				},
 			},
