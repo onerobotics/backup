@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/codegangsta/cli"
-	"github.com/unreal/backup/ftp"
+	"github.com/onerobotics/backup/ftp"
 )
 
 const VERSION = "1.0.0"
@@ -50,7 +50,7 @@ func (r Robot) Backup(filter func(filename string) bool, destination string, wg 
 
 	files, err := c.NameList()
 	if err != nil {
-		log.Println("error getting list of files")
+		log.Println("error getting list of files", err)
 		return
 	}
 
