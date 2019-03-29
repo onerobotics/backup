@@ -15,7 +15,7 @@ import (
 	"github.com/onerobotics/backup/robot"
 )
 
-const VERSION = "1.0.0"
+const VERSION = "1.0.1"
 const JSON_FILENAME = "backup_tool.json"
 
 type Project struct {
@@ -87,6 +87,8 @@ func Init() (*Project, error) {
 }
 
 func (p *Project) Save() error {
+	p.Version = VERSION
+
 	b, err := json.Marshal(p)
 	if err != nil {
 		return err
