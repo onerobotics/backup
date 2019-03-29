@@ -3,6 +3,7 @@ package project
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,6 +18,25 @@ import (
 
 const VERSION = "1.0.1"
 const JSON_FILENAME = "backup_tool.json"
+
+type RobotNamelist []string
+
+func (r *RobotNamelist) String() string {
+	return fmt.Sprint(*r)
+}
+
+func (r *RobotNamelist) Set(value string) error {
+	if len(*r) > 0 {
+		return errors.New("robot namelist flag already been set")
+	}
+
+	for _, n := range strings.Split(value, ",") {
+		*r = append(*r, n)
+	}
+
+	return nil
+}
+
 
 type Project struct {
 	Destination string
@@ -148,9 +168,36 @@ func (p *Project) RemoveRobot() error {
 	return p.Save()
 }
 
-func (p *Project) Backup(filter func(string) bool, name string) error {
-	if len(p.Robots) <= 0 {
-		return  fmt.Errorf("Your project does not have any robots. Please run `BackupTool add` to add one.")
+func (p *Project) filteredRobots(namelist RobotNamelist) []robot.Robot {
+	if len(namelist) == 0 {
+		return p.Robots
+	}
+
+	var l []robot.Robot
+	for _, n := range namelist {
+		for _, r := range p.Robots {
+			if r.Name == n {
+				l = append(l, r)
+			}
+		}
+	}
+
+	return l
+}
+
+func (p *Project) Backup(namelist RobotNamelist, filter func(string) bool, name string) error {
+	if len(p.Robots) < 1 {
+		return errors.New("Your project does not have any robots. Please run `BackupTool add` to add one.")
+	}
+
+	robotList := p.filteredRobots(namelist)
+	if len(robotList) < 1 {
+		var names []string
+		for _, r := range p.Robots {
+			names = append(names, r.Name)
+		}
+		return fmt.Errorf(`No robot names match the provided namelist: %v
+Available names are %v`, namelist, names)
 	}
 
 	t := time.Now()
@@ -160,7 +207,7 @@ func (p *Project) Backup(filter func(string) bool, name string) error {
 	dest := filepath.Join(p.Destination, fmt.Sprintf("%d-%02d-%02dT%02d-%02d-%02d_%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), name))
 
 	var wg sync.WaitGroup
-	for _, r := range p.Robots {
+	for _, r := range robotList {
 		wg.Add(1)
 		go r.Backup(filter, dest, &wg)
 	}

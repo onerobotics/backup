@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,7 @@ import (
 )
 
 var filters map[string][]string
+var robotNamelistFlag project.RobotNamelist
 
 func init() {
 		filters = make(map[string][]string)
@@ -23,6 +25,8 @@ func init() {
 		filters["app"] = []string{"*.tp", "numreg.vr", "posreg.vr"}
 		filters["ascii"] = []string{"*.ls", "*.va", "*.dat", "*.dg", "*.xml"}
 		filters["bin"] = []string{"*.zip", "*.sv", "*.tp", "*.vr"}
+
+		flag.Var(&robotNamelistFlag, "r", "comma-separated list of robot names")
 }
 
 func usage() {
@@ -56,7 +60,7 @@ to the current project.`)
 
 func backupUsage() {
 	fmt.Println(`
-usage: backuptool backup [filter]
+usage: backuptool backup [flags] filter
 
 The filters are:
 	all	*.*
@@ -68,7 +72,12 @@ The filters are:
 	vision	*.vd, *.vda, *.zip
 	app	*.tp, numreg.vr, posreg.vr
 	ascii	*.ls, *.va, *.dat, *.dg, *.xml
-	bin	*.zip, *.sv, *.tp, *.vr`)
+	bin	*.zip, *.sv, *.tp, *.vr
+	
+The flags are:
+	-r	comma-separated list of robot names
+		Used to backup a subset of the project's robots
+`)
 }
 
 func removeUsage() {
@@ -79,12 +88,13 @@ Follow the CLI wizard to remove a robot from your project`)
 }
 
 func main() {
+	flag.Parse()
+	args := flag.Args()
+
 	p, err := project.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	args := os.Args[1:]
 
 	if len(args) < 1 {
 		usage()
@@ -115,7 +125,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		err := p.Backup(func(filename string) bool {
+		err := p.Backup(robotNamelistFlag, func(filename string) bool {
 			for _, f := range filter {
 				if f[0] == '*' {
 					return filepath.Ext(filename) == f[1:]
