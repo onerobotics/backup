@@ -127,8 +127,10 @@ func (p *Project) RemoveRobot() error {
 	fmt.Println("\nWhich robot do you want to remove?")
 
 	var id int
-	for _, err := fmt.Scanf("%d", &id); err != nil; {
+	_, err := fmt.Scanf("%d", &id)
+	if err != nil {
 		fmt.Println("Invalid id. Try again.")
+		goto list
 	}
 
 	id = id - 1
@@ -144,10 +146,9 @@ func (p *Project) RemoveRobot() error {
 	return p.Save()
 }
 
-func (p *Project) Backup(filter func(string) bool, name string) {
+func (p *Project) Backup(filter func(string) bool, name string) error {
 	if len(p.Robots) <= 0 {
-		fmt.Println("Your project does not have any robots. Please run `BackupTool add` to add one.")
-		return
+		return  fmt.Errorf("Your project does not have any robots. Please run `BackupTool add` to add one.")
 	}
 
 	t := time.Now()
@@ -164,4 +165,6 @@ func (p *Project) Backup(filter func(string) bool, name string) {
 	wg.Wait()
 
 	log.Printf("Backed up all robots in %v", time.Since(t))
+
+	return nil
 }
