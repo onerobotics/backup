@@ -53,47 +53,61 @@ func (c *Connection) debugResponse(code int, msg string) {
 	}
 }
 
-func (c *Connection) Connect() {
+func (c *Connection) Connect() error {
 	c.debugf("Connecting to", c.addr+":"+c.port)
 	conn, err := net.Dial("tcp", c.addr+":"+c.port)
-	check(err)
+	if err != nil {
+		return err
+	}
 	c.c = conn
 
 	c.conn = textproto.NewConn(conn)
 	code, msg, err := c.conn.ReadResponse(2)
-	check(err)
 	c.debugResponse(code, msg)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Connection) Cmd(exp int, format string, args ...interface{}) (code int, msg string, err error) {
 	err = c.conn.PrintfLine(format, args...)
 	if err != nil {
-		return 0, "", err
+		return
 	}
-	code, msg, err = c.conn.ReadResponse(exp)
-	return
+
+	return c.conn.ReadResponse(exp)
 }
 
-func (c *Connection) Quit() {
+func (c *Connection) Quit() error {
 	code, msg, err := c.Cmd(221, "QUIT")
-	check(err)
 	c.debugResponse(code, msg)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (c *Connection) Type(t string) {
+func (c *Connection) Type(t string) error {
 	code, msg, err := c.Cmd(200, "TYPE %s", t)
-	check(err)
 	c.debugResponse(code, msg)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var passiveRegexp = regexp.MustCompile(`([\d]+),([\d]+),([\d]+),([\d]+),([\d]+),([\d]+)`)
 
 func (c *Connection) Passive() (net.Conn, error) {
 	code, msg, err := c.Cmd(227, "PASV")
+	c.debugResponse(code, msg)
 	if err != nil {
 		return nil, err
 	}
-	c.debugResponse(code, msg)
 
 	matches := passiveRegexp.FindStringSubmatch(msg)
 	if matches == nil {
@@ -104,10 +118,12 @@ func (c *Connection) Passive() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	pl, err := strconv.Atoi(matches[6])
 	if err != nil {
 		return nil, err
 	}
+
 	port := strconv.Itoa((ph << 8) | pl)
 	addr := strings.Join(matches[1:5], ".") + ":" + port
 
@@ -129,10 +145,10 @@ func (c *Connection) NameList() ([]string, error) {
 	defer dconn.Close()
 
 	code, msg, err := c.Cmd(1, "NLST")
+	c.debugResponse(code, msg)
 	if err != nil {
 		return nil, err
 	}
-	c.debugResponse(code, msg)
 
 	var files []string
 	scanner := bufio.NewScanner(dconn)
@@ -147,13 +163,13 @@ func (c *Connection) NameList() ([]string, error) {
 	dconn.Close()
 
 	c.debugf("Received list of %d files\n", len(files))
-
 	c.debug("Waiting for response from main connection...")
+
 	code, msg, err = c.conn.ReadResponse(226)
+	c.debugResponse(code, msg)
 	if err != nil {
 		return nil, err
 	}
-	c.debugResponse(code, msg)
 
 	return files, nil
 }
@@ -163,13 +179,13 @@ func (c *Connection) Download(filename string, dest string) error {
 		return nil
 	}
 
-	fo, err := os.Create(dest + "/" + filename)
+	f, err := os.Create(dest + "/" + filename)
 	if err != nil {
 		return err
 	}
-	defer fo.Close()
+	defer f.Close()
 
-	w := bufio.NewWriter(fo)
+	w := bufio.NewWriter(f)
 	defer w.Flush()
 
 	dconn, err := c.Passive()
@@ -191,10 +207,10 @@ func (c *Connection) Download(filename string, dest string) error {
 	dconn.Close()
 
 	code, msg, err = c.conn.ReadResponse(2)
+	c.debugResponse(code, msg)
 	if err != nil {
 		return err
 	}
-	c.debugResponse(code, msg)
 
 	return nil
 }
