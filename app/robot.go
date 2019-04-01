@@ -104,4 +104,3 @@ func (r Robot) Backup(filter func(filename string) bool, destination string, wg 
 
 	return nil
 }
-
