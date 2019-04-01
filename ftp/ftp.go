@@ -14,12 +14,6 @@ import (
 	"time"
 )
 
-func check(e error) {
-	if e != nil {
-		log.Fatal("FATAL:", e)
-	}
-}
-
 type Connection struct {
 	c     net.Conn
 	conn  *textproto.Conn
