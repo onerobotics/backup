@@ -1,4 +1,4 @@
-package robot
+package app
 
 import (
 	"bufio"
@@ -17,7 +17,7 @@ type Robot struct {
 	Host string
 }
 
-func FromWizard() (*Robot, error) {
+func NewRobot() (*Robot, error) {
 	r := bufio.NewReader(os.Stdin)
 begin:
 	fmt.Println("Please provide a name for the robot (e.g. R1):")

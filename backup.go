@@ -7,11 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/onerobotics/backup/project"
+	"github.com/onerobotics/backup/app"
 )
 
 var filters map[string][]string
-var robotNamelistFlag project.RobotNamelist
+var robotNamelistFlag app.RobotNamelist
 
 func init() {
 		filters = make(map[string][]string)
@@ -91,7 +91,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
-	p, err := project.Init()
+	p, err := app.NewProject()
 	if err != nil {
 		log.Fatal(err)
 	}

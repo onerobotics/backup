@@ -1,4 +1,4 @@
-package project
+package app
 
 import (
 	"bufio"
@@ -12,11 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/onerobotics/backup/robot"
 )
 
-const VERSION = "1.0.1"
 const JSON_FILENAME = "backup_tool.json"
 
 type RobotNamelist []string
@@ -41,7 +38,7 @@ func (r *RobotNamelist) Set(value string) error {
 type Project struct {
 	Destination string
 	Version     string
-	Robots      []robot.Robot
+	Robots      []Robot
 }
 
 func (p *Project) fromJSON() error {
@@ -92,7 +89,7 @@ func (p *Project) fromWizard() error {
 }
 
 
-func Init() (*Project, error) {
+func NewProject() (*Project, error) {
 	p := &Project{}
 
 	err := p.fromJSON()
@@ -125,7 +122,7 @@ func (p *Project) Save() error {
 }
 
 func (p *Project) AddRobot() error {
-	r, err := robot.FromWizard()
+	r, err := NewRobot()
 	if err != nil {
 		return err
 	}
@@ -168,12 +165,12 @@ func (p *Project) RemoveRobot() error {
 	return p.Save()
 }
 
-func (p *Project) filteredRobots(namelist RobotNamelist) []robot.Robot {
+func (p *Project) filteredRobots(namelist RobotNamelist) []Robot {
 	if len(namelist) == 0 {
 		return p.Robots
 	}
 
-	var l []robot.Robot
+	var l []Robot
 	for _, n := range namelist {
 		for _, r := range p.Robots {
 			if r.Name == n {
