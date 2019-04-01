@@ -30,8 +30,8 @@ func init() {
 }
 
 func usage() {
-	fmt.Println(`
-BackupTool v1.0.1
+	fmt.Printf(`
+BackupTool v%s
 -----------------
 FANUC robot backups made easy by ONE Robotics Company.
 
@@ -47,7 +47,8 @@ The commands are:
 	add, a		Add a robot to a project
 	backup, b	Perform a backup
 	remove, r	Remove a robot from a project
-	help, h		Show this screen or command-specific help`)
+	help, h		Show this screen or command-specific help
+`, app.VERSION)
 }
 
 func addUsage() {
