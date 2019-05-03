@@ -1,8 +1,11 @@
+// inspired by https://github.com/jum/tinyftp
+// which is copyright 2013 Jens-Uwe Mager jum@anubis.han.de
 package ftp
 
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -49,7 +52,7 @@ func (c *Connection) debugResponse(code int, msg string) {
 
 func (c *Connection) Connect() error {
 	c.debugf("Connecting to %s", c.addr+":"+c.port)
-	conn, err := net.Dial("tcp", c.addr+":"+c.port)
+	conn, err := net.DialTimeout("tcp", c.addr+":"+c.port, 5*time.Second)
 	if err != nil {
 		return err
 	}
@@ -66,6 +69,7 @@ func (c *Connection) Connect() error {
 }
 
 func (c *Connection) Cmd(exp int, format string, args ...interface{}) (code int, msg string, err error) {
+	c.debugf(fmt.Sprintf("Cmd %d", exp)+format, args...)
 	err = c.conn.PrintfLine(format, args...)
 	if err != nil {
 		return
@@ -169,37 +173,39 @@ func (c *Connection) NameList() ([]string, error) {
 }
 
 func (c *Connection) Download(filename string, dest string) error {
-	if filename[0] == '-' {
-		return nil
-	}
-
+	c.debugf("creating local file %s\n", dest+"/"+filename)
 	f, err := os.Create(dest + "/" + filename)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
+	c.debugf("creating writer %s\n", filename)
 	w := bufio.NewWriter(f)
 	defer w.Flush()
 
+	c.debugf("getting passive connection %s\n", filename)
 	dconn, err := c.Passive()
 	if err != nil {
 		return err
 	}
 	defer dconn.Close()
 
+	c.debugf("issuing RETR cmd %s\n", filename)
 	code, msg, err := c.Cmd(1, "RETR %s", filename)
+	c.debugf("got response for RETR %s\n", filename)
 	if err != nil {
 		return err
 	}
 
+	c.debugf("copying %s\n", filename)
 	_, err = io.Copy(w, dconn)
 	if err != nil {
 		return err
 	}
-
 	dconn.Close()
 
+	c.debugf("reading response %s\n", filename)
 	code, msg, err = c.conn.ReadResponse(2)
 	c.debugResponse(code, msg)
 	if err != nil {

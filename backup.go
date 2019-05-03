@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/onerobotics/backup/app"
 )
@@ -126,8 +128,14 @@ func main() {
 			os.Exit(1)
 		}
 
-		err := p.Backup(robotNamelistFlag, func(filename string) bool {
+		t := time.Now()
+		dest := filepath.Join(p.Destination, fmt.Sprintf("%d-%02d-%02dT%02d-%02d-%02d_%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), args[1]))
+		resultsc, errc := app.BackupRobots(p.Robots, dest, func(filename string) bool {
 			for _, f := range filter {
+				if f == "*.*" {
+					return true
+				}
+
 				if f[0] == '*' {
 					return filepath.Ext(filename) == f[1:]
 				} else {
@@ -136,11 +144,26 @@ func main() {
 			}
 
 			return false
-		}, args[1])
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		})
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for result := range resultsc {
+				log.Println(result)
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for err := range errc {
+				log.Println(err)
+			}
+		}()
+		wg.Wait()
+		// TODO: os.Exit(1)??
 	case "remove", "r":
 		if len(args) > 1 {
 			removeUsage()

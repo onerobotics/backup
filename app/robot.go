@@ -3,13 +3,8 @@ package app
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"strings"
-	"sync"
-	"time"
-
-	"github.com/onerobotics/backup/ftp"
 )
 
 type Robot struct {
@@ -51,56 +46,4 @@ confirm:
 	default:
 		goto confirm
 	}
-}
-
-func (r Robot) Backup(filter func(filename string) bool, destination string, wg *sync.WaitGroup) error {
-	defer wg.Done()
-
-	t := time.Now()
-
-	log.Println("Backing up", r.Name, "at", r.Host)
-	dirname := destination + "/" + r.Name
-	err := os.MkdirAll(dirname, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	c := ftp.NewConnection(r.Host, "21")
-	c.Connect()
-	defer c.Quit()
-
-	files, err := c.NameList()
-	if err != nil {
-		log.Println("error getting list of files", err)
-		return err
-	}
-
-	err = c.Type("I")
-	if err != nil {
-		return err
-	}
-
-	var errorList []error
-	for _, file := range files {
-		if filter(file) {
-			log.Printf("%s: Downloading %s", r.Name, file)
-			err := c.Download(file, dirname)
-			if err != nil {
-				errorList = append(errorList, err)
-			}
-		} else {
-			//log.Printf("%s: Skipping %s", r.Name, file)
-		}
-	}
-
-	if len(errorList) > 0 {
-		log.Printf("There were %d errors.\n", len(errorList))
-		for _, err := range errorList {
-			log.Println(err)
-		}
-	}
-
-	log.Printf("Finished backing up %s in %v\n", r.Name, time.Since(t))
-
-	return nil
 }

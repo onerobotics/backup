@@ -6,12 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
-	"path/filepath"
 	"strings"
-	"sync"
-	"time"
 )
 
 const JSON_FILENAME = "backup_tool.json"
@@ -177,37 +173,4 @@ func (p *Project) filteredRobots(namelist RobotNamelist) []Robot {
 	}
 
 	return l
-}
-
-func (p *Project) Backup(namelist RobotNamelist, filter func(string) bool, name string) error {
-	if len(p.Robots) < 1 {
-		return errors.New("Your project does not have any robots. Please run `BackupTool add` to add one.")
-	}
-
-	robotList := p.filteredRobots(namelist)
-	if len(robotList) < 1 {
-		var names []string
-		for _, r := range p.Robots {
-			names = append(names, r.Name)
-		}
-		return fmt.Errorf(`No robot names match the provided namelist: %v
-Available names are %v`, namelist, names)
-	}
-
-	t := time.Now()
-
-	log.Println("Backing up project...")
-
-	dest := filepath.Join(p.Destination, fmt.Sprintf("%d-%02d-%02dT%02d-%02d-%02d_%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), name))
-
-	var wg sync.WaitGroup
-	for _, r := range robotList {
-		wg.Add(1)
-		go r.Backup(filter, dest, &wg)
-	}
-	wg.Wait()
-
-	log.Printf("Backed up all robots in %v", time.Since(t))
-
-	return nil
 }
