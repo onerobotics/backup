@@ -66,7 +66,10 @@ func (r Robot) Backup(filter func(filename string) bool, destination string, wg 
 	}
 
 	c := ftp.NewConnection(r.Host, "21")
-	c.Connect()
+	err = c.Connect()
+	if err != nil {
+		return err
+	}
 	defer c.Quit()
 
 	files, err := c.NameList()
@@ -104,4 +107,3 @@ func (r Robot) Backup(filter func(filename string) bool, destination string, wg 
 
 	return nil
 }
-

@@ -14,19 +14,19 @@ var filters map[string][]string
 var robotNamelistFlag project.RobotNamelist
 
 func init() {
-		filters = make(map[string][]string)
-		filters["all"] = []string{"*.*"}
-		filters["tp"] = []string{"*.tp"}
-		filters["ls"] = []string{"*.ls"}
-		filters["vr"] = []string{"*.vr"}
-		filters["va"] = []string{"*.va"}
-		filters["sv"] = []string{"*.sv"}
-		filters["vision"] = []string{"*.vd", "*.vda", "*.zip"}
-		filters["app"] = []string{"*.tp", "numreg.vr", "posreg.vr"}
-		filters["ascii"] = []string{"*.ls", "*.va", "*.dat", "*.dg", "*.xml"}
-		filters["bin"] = []string{"*.zip", "*.sv", "*.tp", "*.vr"}
+	filters = make(map[string][]string)
+	filters["all"] = []string{"*.*"}
+	filters["tp"] = []string{"*.tp"}
+	filters["ls"] = []string{"*.ls"}
+	filters["vr"] = []string{"*.vr"}
+	filters["va"] = []string{"*.va"}
+	filters["sv"] = []string{"*.sv"}
+	filters["vision"] = []string{"*.vd", "*.vda", "*.zip"}
+	filters["app"] = []string{"*.tp", "numreg.vr", "posreg.vr"}
+	filters["ascii"] = []string{"*.ls", "*.va", "*.dat", "*.dg", "*.xml"}
+	filters["bin"] = []string{"*.zip", "*.sv", "*.tp", "*.vr"}
 
-		flag.Var(&robotNamelistFlag, "r", "comma-separated list of robot names")
+	flag.Var(&robotNamelistFlag, "r", "comma-separated list of robot names")
 }
 
 func usage() {
@@ -59,7 +59,7 @@ to the current project.`)
 }
 
 func backupUsage() {
-	fmt.Println(`
+	fmt.Printf(`
 usage: backuptool backup [flags] filter
 
 The filters are:
@@ -77,6 +77,7 @@ The filters are:
 The flags are:
 	-r	comma-separated list of robot names
 		Used to backup a subset of the project's robots
+
 `)
 }
 
@@ -118,7 +119,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		filter, ok := filters[args[1]];
+		filter, ok := filters[args[1]]
 		if !ok {
 			fmt.Printf("Invalid filter: %s\n", args[1])
 			backupUsage()

@@ -37,7 +37,6 @@ func (r *RobotNamelist) Set(value string) error {
 	return nil
 }
 
-
 type Project struct {
 	Destination string
 	Version     string
@@ -58,7 +57,7 @@ func (p *Project) fromJSON() error {
 func (p *Project) fromWizard() error {
 	r := bufio.NewReader(os.Stdin)
 
-	questions:
+questions:
 	fmt.Println("Where should backups be stored?")
 	dest, err := r.ReadString('\n')
 	if err != nil {
@@ -66,7 +65,7 @@ func (p *Project) fromWizard() error {
 	}
 	dest = strings.TrimSpace(dest)
 
-	confirm:
+confirm:
 	fmt.Printf("Destination: %s\n", dest)
 	fmt.Println("Is this correct? (Y/N)")
 
@@ -90,7 +89,6 @@ func (p *Project) fromWizard() error {
 
 	return p.Save()
 }
-
 
 func Init() (*Project, error) {
 	p := &Project{}
@@ -140,8 +138,7 @@ func (p *Project) RemoveRobot() error {
 		return nil
 	}
 
-
-	list:
+list:
 	for id, robot := range p.Robots {
 		fmt.Printf("%d. %s %s\n", id+1, robot.Name, robot.Host)
 	}

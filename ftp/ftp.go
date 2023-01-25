@@ -54,7 +54,7 @@ func (c *Connection) debugResponse(code int, msg string) {
 }
 
 func (c *Connection) Connect() error {
-	c.debugf("Connecting to", c.addr+":"+c.port)
+	c.debugf("Connecting to %s", c.addr+":"+c.port)
 	conn, err := net.Dial("tcp", c.addr+":"+c.port)
 	if err != nil {
 		return err
